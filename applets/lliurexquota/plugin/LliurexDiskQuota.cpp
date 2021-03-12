@@ -26,6 +26,9 @@
 #include <QRegularExpression>
 #include <QStandardPaths>
 #include <QDebug>
+#include <QJsonDocument>
+#include <QJsonObject>
+
 
 LliurexDiskQuota::LliurexDiskQuota(QObject *parent)
     : QObject(parent)
@@ -141,9 +144,52 @@ static QString iconNameForQuota(int quota)
     return QStringLiteral("lliurexquota-critical");
 }
 
+static QString processN4dResponse(const QString &response){
+    QStringList must = {"msg","status","return"};
+    QList<int> integer_types = {QMetaType::Int,QMetaType::UInt,QMetaType::Double,QMetaType::Long,QMetaType::LongLong,QMetaType::Short,QMetaType::ULong,QMetaType::ULongLong,QMetaType::UShort,QMetaType::Float};
+    QList<int> dict_types = {QMetaType::QVariantMap};
+    int code;
+
+    auto line2 = response;
+    line2.replace("'","\"");
+    QJsonDocument doc = QJsonDocument::fromJson(line2.toUtf8());
+
+    //get the jsonObject
+    QJsonObject jObject = doc.object();
+
+    //convert the json object to variantmap
+    QVariantMap dict = jObject.toVariantMap();
+    QStringList keys = dict.keys();
+
+    bool ok = true;
+    for (auto str: must){
+        if (! keys.contains(str)){
+            ok = false;
+            break;
+        }
+    }
+    if (! integer_types.contains(dict["status_code"].type())){
+        ok = false;
+    }else{
+        code = dict["status_code"].toInt();
+    }
+
+    if (ok && code != 0){
+        ok = false;
+    }
+    if (!ok){
+        return "";
+    }
+    if (dict_types.contains(dict["return"].type())){
+        return processN4dResponse(QString(QJsonDocument::fromVariant(dict["return"]).toJson()));
+    }
+    QString returned = dict["return"].toString();
+    return returned;
+}
 static bool isQuotaLine(const QString &line)
 {
-    QStringList parts = line.split(QLatin1Char(','), QString::SkipEmptyParts);
+    auto returned = processN4dResponse(line);
+    QStringList parts = returned.split(QLatin1Char(','), Qt::SkipEmptyParts);
     if (parts.size() == 4){
         if (parts[0] == "True"){
             return true;
@@ -194,7 +240,8 @@ void LliurexDiskQuota::quotaProcessFinished(int exitCode, QProcess::ExitStatus e
     const QString rawData = QString::fromLocal8Bit(m_quotaProcess->readAllStandardOutput());
     //qDebug() << "Result from lliurex-quota cmd:" << rawData;
 
-    const QStringList lines = rawData.split(QRegularExpression(QStringLiteral("[\r\n]")), QString::SkipEmptyParts);
+    const QStringList lines = rawData.split(QRegularExpression(QStringLiteral("[\r\n]")), Qt::SkipEmptyParts);
+    
     // Testing
 //     QStringList lines = QStringList()
 //         << QStringLiteral("/home/peterpan 3975379*  5000000 7000000           57602 0       0")
@@ -212,12 +259,13 @@ void LliurexDiskQuota::quotaProcessFinished(int exitCode, QProcess::ExitStatus e
 
     // assumption: Filesystem starts with slash
     for (const QString &line : lines) {
+        QString lines = processN4dResponse(line);
         //qDebug() << "Procesing line + isQuotaLine" << line << " + " << isQuotaLine(line);
         if (!isQuotaLine(line)) {
             continue;
         }
 
-        QStringList parts = line.split(QLatin1Char(','), QString::SkipEmptyParts);
+        QStringList parts = line.split(QLatin1Char(','), Qt::SkipEmptyParts);
         // True,lliurex,182,0 // parts: 0,1,2,3
 
         // 'quota' uses kilo bytes -> factor 1024
