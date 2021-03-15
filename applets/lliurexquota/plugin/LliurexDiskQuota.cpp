@@ -188,8 +188,7 @@ static QString processN4dResponse(const QString &response){
 }
 static bool isQuotaLine(const QString &line)
 {
-    auto returned = processN4dResponse(line);
-    QStringList parts = returned.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    QStringList parts = line.split(QLatin1Char(','), Qt::SkipEmptyParts);
     if (parts.size() == 4){
         if (parts[0] == "True"){
             return true;
@@ -259,13 +258,13 @@ void LliurexDiskQuota::quotaProcessFinished(int exitCode, QProcess::ExitStatus e
 
     // assumption: Filesystem starts with slash
     for (const QString &line : lines) {
-        QString lines = processN4dResponse(line);
-        //qDebug() << "Procesing line + isQuotaLine" << line << " + " << isQuotaLine(line);
-        if (!isQuotaLine(line)) {
+        QString line2 = processN4dResponse(line);
+        //qDebug() << "Procesing line + isQuotaLine" << line2 << " + " << isQuotaLine(line2);
+        if (!isQuotaLine(line2)) {
             continue;
         }
 
-        QStringList parts = line.split(QLatin1Char(','), Qt::SkipEmptyParts);
+        QStringList parts = line2.split(QLatin1Char(','), Qt::SkipEmptyParts);
         // True,lliurex,182,0 // parts: 0,1,2,3
 
         // 'quota' uses kilo bytes -> factor 1024
