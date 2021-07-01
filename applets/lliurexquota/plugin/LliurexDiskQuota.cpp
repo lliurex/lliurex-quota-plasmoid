@@ -259,6 +259,9 @@ void LliurexDiskQuota::quotaProcessFinished(int exitCode, QProcess::ExitStatus e
     // assumption: Filesystem starts with slash
     for (const QString &line : lines) {
         QString line2 = processN4dResponse(line);
+        if (line2 == ""){
+            line2 = line;
+        }
         //qDebug() << "Procesing line + isQuotaLine" << line2 << " + " << isQuotaLine(line2);
         if (!isQuotaLine(line2)) {
             continue;
