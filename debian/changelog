@@ -1,3 +1,9 @@
+plasma-widget-lliurex-quota (0.1.2-focal) focal; urgency=medium
+
+  * Allow optionally n4d responses with new format
+
+ -- M.Angel Juan <m.angel.juan@gmail.com>  Fri, 02 Jul 2021 11:24:41 +0200
+
 plasma-widget-lliurex-quota (0.1.1-focal) focal; urgency=medium
 
   * Focal port
